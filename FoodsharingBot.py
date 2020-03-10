@@ -3,7 +3,10 @@ import requests
 import time
 from datetime import datetime
 
-TOKEN = "1095894840:AAE4ov_irt3t55axTBfBXgM0RehZ6wFKnxg"
+f = open('token.txt','r')
+TOKEN = f.read()
+f.close()
+
 bot = telebot.TeleBot(TOKEN)
 
 keyboard_main = telebot.types.ReplyKeyboardMarkup()
