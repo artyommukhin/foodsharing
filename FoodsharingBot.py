@@ -39,7 +39,7 @@ def handle_text(message):
         touch_count = touch_count + 1
         bot.send_message(message.chat.id, 'тык'*touch_count)
     elif message.text == 'Поделиться':
-        bot.send_message(chat_id, 'Введите адрес')
+        bot.send_message(chat_id, 'Введите продукты')
     elif message.text == 'Забрать':
         pass
     else:
