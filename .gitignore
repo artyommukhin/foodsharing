@@ -130,3 +130,6 @@ dmypy.json
 
 # file containing bot's token
 token.txt
+
+# storage files
+storage.*

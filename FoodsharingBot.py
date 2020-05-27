@@ -32,13 +32,19 @@ class Offer:
         'address': 'Пушкина-колотушкина'
     }
 
+rules = '''\
+Фудшеринг - это хорошо
+Правила:
+1. Если вы хотите поделиться продуктами, нажмите "Поделиться" 
+2. Если вы хотите забрать продукты, нажмите "Забрать"
+3. Если вы хотите просмотреть список своих предложений, нажмите "Мои предложения"
+'''
+
 f = open('token.txt','r')
 TOKEN = f.read()
 f.close()
 
 bot = telebot.TeleBot(TOKEN)
-
-# is_donor = 
 
 @bot.message_handler(commands=['test'])
 def test_message(message):
@@ -57,20 +63,11 @@ def start_message(message):
     with shelve.open('storage', flag='c') as db:
         db[str(uid)] = User(cid, uid)
 
-    bot.send_message(message.chat.id, 'Привет! Добро пожаловать в мир рационального использования ресурсов\nВыбери действие', reply_markup=keyboard_main)
+    bot.send_message(message.chat.id, 'Привет! Добро пожаловать в мир рационального использования ресурсов\nВыберите действие', reply_markup=keyboard_main)
 
-    # bot.reply_to(message, 'Привет! Добро пожаловать в мир рационального использования ресурсов\nВыбери действие', reply_markup=keyboard_main)
 @bot.message_handler(commands=['help'])
 def help_message(message):
-    bot.send_message(message.chat.id, 
-    '''\
-Фудшеринг - это хорошо
-Правила:
-1. Если вы хотите поделиться продуктами, нажмите "Поделиться" 
-2. Если вы хотите забрать продукты, нажмите "Забрать"
-3. Если вы хотите просмотреть список своих предложений, нажмите "Мои предложения"
-'''
-    )
+    bot.send_message(message.chat.id, rules)
 
 # @bot.message_handler(commands=['settings'])
 # def settings_message(message):
@@ -78,8 +75,6 @@ def help_message(message):
 
 # @bot.inline_handler(lambda query: query.query == 'text')
 # def query_text(inline_query):
-
-
 
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
@@ -91,18 +86,12 @@ def handle_text(message):
     elif message.text == 'Забрать':
         markup_inline = telebot.types.InlineKeyboardMarkup()
         markup_inline.add(
-            telebot.types.InlineKeyboardButton('Карта доноров', url='https://2gis.ru/krasnoyarsk/firm/986145966616730?m=92.797081%2C55.994433%2F16')
-        )       
+            telebot.types.InlineKeyboardButton('Карта доноров' ,  url = 'http://192.168.0.4/foodsharing') 
+                # url='https://2gis.ru/krasnoyarsk/firm/986145966616730?m=92.797081%2C55.994433%2F16')
+        )     
+        bot.send_message(cid, 'Карта:', reply_markup=markup_inline)
     elif message.text == 'Правила':
-        bot.send_message(message.chat.id,     
-'''\
-Фудшеринг - это хорошо
-Правила:
-1. Если вы хотите поделиться продуктами, нажмите "Поделиться" 
-2. Если вы хотите забрать продукты, нажмите "Забрать"
-3. Если вы хотите просмотреть список своих предложений, нажмите "Мои предложения"
-'''
-        )
+        bot.send_message(message.chat.id, rules)
     elif message.text == 'Мои предложения':
        
         answer_str = 'Ваши предложения:\n'
@@ -143,7 +132,7 @@ def donor_input_products(message):
     }
 
     with shelve.open('storage', flag='c') as db:
-        offers = db[str(uid)]
+        offers = db[str(uid)].offers
         offers.append(offer)
     
     
