@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import telebot
 import requests
 import time
@@ -5,6 +6,7 @@ import shelve
 import json
 import random
 from datetime import datetime
+
 
 class User:
     def __init__(self, chat_id, id, offers = []):
@@ -40,22 +42,28 @@ rules = '''\
 3. Если вы хотите просмотреть список своих предложений, нажмите "Мои предложения"
 '''
 
+# Получение токена бота из файла
 f = open('token.txt','r')
 TOKEN = f.read()
 f.close()
 
+# Инициализация объекта бота
 bot = telebot.TeleBot(TOKEN)
 
+# Обработчик тестовой команды
 @bot.message_handler(commands=['test'])
 def test_message(message):
     bot.send_location(message.chat.id, 56.018012, 92.868991)
     bot.send_message(message.chat.id, str(message))
 
+# Обработчик стартовой команды
 @bot.message_handler(commands=['start'])
 def start_message(message):
+    
     cid = message.chat.id
     uid = message.from_user.id
 
+    # Настройки клавиатуры
     keyboard_main = telebot.types.ReplyKeyboardMarkup()
     keyboard_main.row('Правила', 'Мои предложения','Поделиться', 'Забрать')
     keyboard_main.resize_keyboard = True
@@ -63,7 +71,8 @@ def start_message(message):
     with shelve.open('storage', flag='c') as db:
         db[str(uid)] = User(cid, uid)
 
-    bot.send_message(message.chat.id, 'Привет! Добро пожаловать в мир рационального использования ресурсов\nВыберите действие', reply_markup=keyboard_main)
+    # Отправка сообщения с клавиатурой
+    bot.send_message(message.chat.id, 'Привет! Добро пожаловать в мир рационального использования ресурсов\nВыбери действие', reply_markup=keyboard_main)
 
 @bot.message_handler(commands=['help'])
 def help_message(message):
@@ -73,9 +82,7 @@ def help_message(message):
 # def settings_message(message):
 #     bot.send_message(message.chat.id, 'not implemented')
 
-# @bot.inline_handler(lambda query: query.query == 'text')
-# def query_text(inline_query):
-
+# Обработчик всех сообщений
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     cid = message.chat.id
@@ -153,7 +160,7 @@ def donor_input_products(message):
 
 # def donor_input_photos(message):
 #     pass
-
+'''
 @bot.message_handler(content_types=['voice'])
 def handle_voice(message):
     sender = message.from_user
@@ -167,7 +174,7 @@ def handle_voice(message):
 
     bot.send_voice(message.chat.id, voice_file.content)
     bot.send_message(message.chat.id, message)
-    
+'''    
 # bot.polling()
 
 bot.infinity_polling()
