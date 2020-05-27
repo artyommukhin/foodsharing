@@ -1,25 +1,34 @@
+# -*- coding: utf-8 -*-
 import telebot
 import requests
 import time
 from datetime import datetime
 
+# Получение токена бота из файла
 f = open('token.txt','r')
 TOKEN = f.read()
 f.close()
 
+# Инициализация объекта бота
 bot = telebot.TeleBot(TOKEN)
 
+# Обработчик тестовой команды
 @bot.message_handler(commands=['test'])
 def test_message(message):
     bot.send_location(message.chat.id, 56.018012, 92.868991)
 
+# Обработчик стартовой команды
 @bot.message_handler(commands=['start'])
 def start_message(message):
+    
+    # Настройки клавиатуры
     keyboard_main = telebot.types.ReplyKeyboardMarkup()
     keyboard_main.row('Правила', 'Главное меню','Поделиться', 'Забрать')
     keyboard_main.resize_keyboard = True
-
+    
+    # Отправка сообщения с клавиатурой
     bot.send_message(message.chat.id, 'Привет! Добро пожаловать в мир рационального использования ресурсов\nВыбери действие', reply_markup=keyboard_main)
+
 
 @bot.message_handler(commands=['help'])
 def help_message(message):
@@ -29,11 +38,7 @@ def help_message(message):
 def settings_message(message):
     bot.send_message(message.chat.id, 'not implemented')
 
-# @bot.inline_handler(lambda query: query.query == 'text')
-# def query_text(inline_query):
-
-
-
+# Обработчик всех сообщений
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     chat_id = message.chat.id
@@ -56,6 +61,7 @@ def handle_text(message):
     else:
         bot.send_message(message.chat.id, 'Я тебя не понимаю :(')
 
+'''
 @bot.message_handler(content_types=['voice'])
 def handle_voice(message):
     sender = message.from_user
@@ -71,6 +77,7 @@ def handle_voice(message):
     bot.send_message(message.chat.id, message)
     
 bot.polling()
+'''
 
 '''
 while True:
