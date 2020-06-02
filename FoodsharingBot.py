@@ -93,7 +93,7 @@ def handle_text(message):
     elif message.text == 'Забрать':
         markup_inline = telebot.types.InlineKeyboardMarkup()
         markup_inline.add(
-            telebot.types.InlineKeyboardButton('Карта доноров' ,  url = 'http://192.168.0.4/foodsharing') 
+            telebot.types.InlineKeyboardButton('Карта доноров' ,  url = 'http://192.168.0.4/fsmap') 
                 # url='https://2gis.ru/krasnoyarsk/firm/986145966616730?m=92.797081%2C55.994433%2F16')
         )     
         bot.send_message(cid, 'Карта:', reply_markup=markup_inline)
