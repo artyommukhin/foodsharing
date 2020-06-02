@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+
+from config import token, shelve_name 
 import telebot
 import requests
 import time
@@ -7,7 +9,9 @@ import json
 import random
 from datetime import datetime
 
+# Объявление классов
 
+# Класс, хранящий информацию о пользователе бота
 class User:
     def __init__(self, chat_id, id, offers = []):
         self.chat_id = chat_id
@@ -17,6 +21,7 @@ class User:
     def __str__(self):
         return f'chat id:{self.chat_id}\nuser id:{self.id}\n{json.dumps(self.offers)}' 
 
+# Класс, хранящий информацию о предложении 
 class Offer:
     def __init__(self, id: int, name: str, descr, date, coords: list):
         self.id = id
@@ -42,19 +47,18 @@ rules = '''\
 3. Если вы хотите просмотреть список своих предложений, нажмите "Мои предложения"
 '''
 
-# Получение токена бота из файла
-f = open('token.txt','r')
-TOKEN = f.read()
-f.close()
-
 # Инициализация объекта бота
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(token)
 
 # Обработчик тестовой команды
 @bot.message_handler(commands=['test'])
 def test_message(message):
     bot.send_location(message.chat.id, 56.018012, 92.868991)
     bot.send_message(message.chat.id, str(message))
+    uid = message.from_user.id
+    with shelve.open(shelve_name, flag='c') as db:
+        print(db[str(uid)])
+    
 
 # Обработчик стартовой команды
 @bot.message_handler(commands=['start'])
@@ -63,54 +67,66 @@ def start_message(message):
     cid = message.chat.id
     uid = message.from_user.id
 
+    # Сохранение пользователя в хранилище
+    with shelve.open(shelve_name, flag='c') as db:
+        if not str(uid) in db:
+            db[str(uid)] = User(cid, uid)
+
     # Настройки клавиатуры
     keyboard_main = telebot.types.ReplyKeyboardMarkup()
     keyboard_main.row('Правила', 'Мои предложения','Поделиться', 'Забрать')
     keyboard_main.resize_keyboard = True
 
-    with shelve.open('storage', flag='c') as db:
-        db[str(uid)] = User(cid, uid)
-
     # Отправка сообщения с клавиатурой
     bot.send_message(message.chat.id, 'Привет! Добро пожаловать в мир рационального использования ресурсов\nВыбери действие', reply_markup=keyboard_main)
 
+
+# Обработчик вызова помощи
 @bot.message_handler(commands=['help'])
 def help_message(message):
     bot.send_message(message.chat.id, rules)
 
-# @bot.message_handler(commands=['settings'])
-# def settings_message(message):
-#     bot.send_message(message.chat.id, 'not implemented')
 
 # Обработчик всех сообщений
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     cid = message.chat.id
     uid = message.from_user.id
+
     if message.text == 'Поделиться':
         bot.send_message(cid, 'Введите продукты')      
-        bot.register_next_step_handler_by_chat_id(cid, donor_input_products)  
+        bot.register_next_step_handler_by_chat_id(cid, donor_input_products) 
+
     elif message.text == 'Забрать':
         markup_inline = telebot.types.InlineKeyboardMarkup()
         markup_inline.add(
-            telebot.types.InlineKeyboardButton('Карта доноров' ,  url = 'http://192.168.0.4/fsmap') 
+            telebot.types.InlineKeyboardButton('Карта доноров (1)' ,  url = 'http://192.168.0.4/fsmap'), 
                 # url='https://2gis.ru/krasnoyarsk/firm/986145966616730?m=92.797081%2C55.994433%2F16')
+            telebot.types.InlineKeyboardButton('Карта доноров (2)' ,  url = 'http://192.168.0.3/fsmap') 
         )     
         bot.send_message(cid, 'Карта:', reply_markup=markup_inline)
+
     elif message.text == 'Правила':
         bot.send_message(message.chat.id, rules)
-    elif message.text == 'Мои предложения':
-       
-        answer_str = 'Ваши предложения:\n'
-        with shelve.open('storage', flag = 'c') as db:
-            try:
-                if not db[str(uid)].offers:
-                    raise KeyError
 
+    elif message.text == 'Мои предложения':
+        answer_str = 'Ваши предложения:\n'
+        
+        with shelve.open(shelve_name, flag = 'c') as db:
+            if str(uid) in db:
                 for offer in db[str(uid)].offers:
                     answer_str += f"ID: {offer['id']}\nName: {offer['name']}\nDate: {offer['time_to_pickup']}\n\n"
-            except KeyError:
-                answer_str = 'У вас нет предложений'
+            else:
+                answer_str = 'У вас нет предложений' 
+
+
+            # try:
+            #     if not db[str(uid)].offers:
+            #         raise KeyError
+            #     for offer in db[str(uid)].offers:
+            #         answer_str += f"ID: {offer['id']}\nName: {offer['name']}\nDate: {offer['time_to_pickup']}\n\n"
+            # except KeyError:
+            #     answer_str = 'У вас нет предложений'
                 
         bot.send_message(cid, answer_str)
 
@@ -118,16 +134,17 @@ def handle_text(message):
         
         # markup_inline.add(button_rules)     
     else:
-        bot.send_message(message.chat.id, 'Я тебя не понимаю :(')
+        bot.send_message(message.chat.id, 'Я вас не понимаю :(')
 
 
+# Ввод продуктов
 def donor_input_products(message):
     cid = message.chat.id
     uid = message.from_user.id
 
-    db = shelve.open('storage', flag='c', writeback=True)
-    user = db[str(uid)]
-    db.close()
+    # db = shelve.open(shelve_name, flag='c', writeback=True)
+    # user = db[str(uid)]
+    # db.close()
 
     offer = {
         'id': random.getrandbits(16),
@@ -138,11 +155,14 @@ def donor_input_products(message):
         'address': None #'Пушкина-колотушкина'
     }
 
-    with shelve.open('storage', flag='c') as db:
-        offers = db[str(uid)].offers
-        offers.append(offer)
-    
-    
+    with shelve.open(shelve_name, flag='c', writeback=True) as db:
+        # Так не должно быть
+        if str(uid) in db:
+            db[str(uid)].offers.append(offer)
+        else:
+        # Пользователь должен сохраняться на старте, это костыль для теста
+            db[str(uid)] = User(cid, uid)
+        
     bot.send_message(message.chat.id, f'Принято! Ваше предложение сохранено под номером {offer.get("id")}\nЕго можно дополнить данными')
     # markup_inline = telebot.types.InlineKeyboardMarkup()
 
@@ -177,7 +197,8 @@ def handle_voice(message):
 '''    
 # bot.polling()
 
-bot.infinity_polling()
+if __name__ == '__main__':
+    bot.infinity_polling()
 
 '''
 while True:
