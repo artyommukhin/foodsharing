@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
 from config import token, shelve_name 
+import storage_worker
+import db_worker
+from classes import User, Offer
+
 import telebot
 import requests
 import time
@@ -9,35 +13,6 @@ import json
 import random
 from datetime import datetime
 
-# Объявление классов
-
-# Класс, хранящий информацию о пользователе бота
-class User:
-    def __init__(self, chat_id, id, offers = []):
-        self.chat_id = chat_id
-        self.offers = offers
-        self.id = id
-
-    def __str__(self):
-        return f'chat id:{self.chat_id}\nuser id:{self.id}\n{json.dumps(self.offers)}' 
-
-# Класс, хранящий информацию о предложении 
-class Offer:
-    def __init__(self, id: int, name: str, descr, date, coords: list):
-        self.id = id
-        self.name = name
-        self.date = date
-        self.coords = coords
-    
-    def __str__(self):
-        return {
-        'id': self.id,
-        'name': 'Мясо',
-        'desc': 'свежее',
-        'time_to_pickup': str(datetime.now()),
-        'marker': [1, 100], # lat, lon
-        'address': 'Пушкина-колотушкина'
-    }
 
 rules = '''\
 Фудшеринг - это хорошо
@@ -53,11 +28,11 @@ bot = telebot.TeleBot(token)
 # Обработчик тестовой команды
 @bot.message_handler(commands=['test'])
 def test_message(message):
-    bot.send_location(message.chat.id, 56.018012, 92.868991)
+    # bot.send_location(message.chat.id, 56.018012, 92.868991)
     bot.send_message(message.chat.id, str(message))
-    uid = message.from_user.id
-    with shelve.open(shelve_name, flag='c') as db:
-        print(db[str(uid)])
+    # uid = message.from_user.id
+    # with shelve.open(shelve_name, flag='c') as db:
+    #     print(db[str(uid)])
     
 
 # Обработчик стартовой команды
@@ -68,9 +43,7 @@ def start_message(message):
     uid = message.from_user.id
 
     # Сохранение пользователя в хранилище
-    with shelve.open(shelve_name, flag='c') as db:
-        if not str(uid) in db:
-            db[str(uid)] = User(cid, uid)
+    storage_worker.save_user(uid)
 
     # Настройки клавиатуры
     keyboard_main = telebot.types.ReplyKeyboardMarkup()
@@ -138,22 +111,37 @@ def handle_text(message):
 
 
 # Ввод продуктов
+# лажа тут
 def donor_input_products(message):
     cid = message.chat.id
     uid = message.from_user.id
+
+    # with shelve.open(shelve_name, flag='c') as db:
+    #     user_db = db[str(uid)]
+    #     for offer in user_db.offers:
+    #         if offer.status = "new":
+
+
 
     # db = shelve.open(shelve_name, flag='c', writeback=True)
     # user = db[str(uid)]
     # db.close()
 
-    offer = {
-        'id': random.getrandbits(16),
-        'name': message.text,
-        'desc': None, #'свежее',
-        'time_to_pickup': None, #str(datetime.now()),
-        'marker': None, #[1, 100], # lat, lon
-        'address': None #'Пушкина-колотушкина'
-    }
+    # offer = {
+    #     'id': random.getrandbits(16),
+    #     'name': message.text,
+    #     'desc': None, #'свежее',
+    #     'time_to_pickup': None, #str(datetime.now()),
+    #     'marker': None, #[1, 100], # lat, lon
+    #     'address': None #'Пушкина-колотушкина'
+    # }
+
+    offer = Offer( 
+        message.text,
+        None,
+        None,
+        None,        
+    )
 
     with shelve.open(shelve_name, flag='c', writeback=True) as db:
         # Так не должно быть
@@ -163,7 +151,8 @@ def donor_input_products(message):
         # Пользователь должен сохраняться на старте, это костыль для теста
             db[str(uid)] = User(cid, uid)
         
-    bot.send_message(message.chat.id, f'Принято! Ваше предложение сохранено под номером {offer.get("id")}\nЕго можно дополнить данными')
+    bot.send_message(message.chat.id, f'Принято! Ваше предложение сохранено под номером {offer.id}\n\
+        Его можно дополнить данными', )
     # markup_inline = telebot.types.InlineKeyboardMarkup()
 
     # markup_inline.add(

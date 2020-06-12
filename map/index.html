@@ -8,12 +8,21 @@
     <script type="text/javascript">
         var map;
     
+        var markers = [];
+        var marker = {
+
+        }
+        
+// use links like this tg://user?id=123456789
+
         DG.then(function () {
             map = DG.map('map', {
                 center: [56.018012, 92.868991],
                 zoom: 4
             });
             DG.marker([55.994433, 92.797081]).addTo(map).bindPopup('В столовой остаётся лишняя еда. Помогите съесть!'); 
+            DG.marker([55.994433, 93.797081]).addTo(map).bindPopup('В столовой остаётся лишняя еда. Помогите съесть!'); 
+            DG.marker([56.994433, 92.797081]).addTo(map).bindPopup('В столовой остаётся лишняя еда. Помогите съесть!'); 
         });
         
     </script>
