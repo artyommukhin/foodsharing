@@ -133,3 +133,6 @@ config.py
 
 # storage files
 storage.*
+
+# VSCode settings
+.vscode
