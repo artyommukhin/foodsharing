@@ -131,8 +131,9 @@ dmypy.json
 # config file
 config.py
 
-# storage files
+# storage and DB files
 storage.*
+database.db
 
 # VSCode settings
 .vscode

@@ -9,3 +9,7 @@ class DBWorker:
     def select_all(self):
         with self.connection:
             return self.cursor.execute('SELECT * FROM offers').fetchall()
+
+    def save_user(self, user_id):
+        with self.connection:
+            self.cursor.execute('INSERT INTO users (id, ) VALUES ()')

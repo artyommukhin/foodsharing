@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from config import token, shelve_name 
+from config import token, shelve_name, db_name 
 import storage_worker
-import db_worker
+from db_worker import DBWorker
 from classes import User, Offer
 
 import telebot
@@ -43,7 +43,8 @@ def start_message(message):
     uid = message.from_user.id
 
     # Сохранение пользователя в хранилище
-    storage_worker.save_user(uid)
+    db = DBWorker(db_name)
+    db.save_user(uid)
 
     # Настройки клавиатуры
     keyboard_main = telebot.types.ReplyKeyboardMarkup()
