@@ -56,11 +56,13 @@ def handle_voice(message):
     bot.send_voice(message.chat.id, voice_file.content)
     bot.send_message(message.chat.id, message)
 
-while True:
-    try:
-        bot.polling(none_stop=True)
+bot.polling(none_stop=True)
 
-    except Exception as e:
-        print('some problems')
-        time.sleep(5)
+# while True:
+#     try:
+        
+
+#     except Exception as e:
+#         print('some problems')
+#         time.sleep(5)
 #bot.infinity_polling()
