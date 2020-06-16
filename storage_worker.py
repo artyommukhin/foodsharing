@@ -1,19 +1,15 @@
 from config import shelve_name
-from classes import UserState, User, Offer
+from classes import State, UserState
 
 import shelve
 
-
-def save_user(user_id):
-    with shelve.open(shelve_name, flag='c') as db:
-        if not str(user_id) in db:
-            db[str(user_id)] = User(user_id)
-        
+def save_user(user: UserState):
+    with shelve.open(shelve_name, flag='c') as storage:
+        storage[str(user.id)] = user
 
 
-def get_state(user_id):
-    with shelve.open(shelve_name, flag='r') as db:
-        if str(user_id) in db:
-            return db[str(user_id)].state
-
-        return UserState.START
+def get_user(user_id):
+    with shelve.open(shelve_name, flag='r') as storage:
+        if str(user_id) in storage:
+            return storage[str(user_id)]
+    return UserState(user_id)

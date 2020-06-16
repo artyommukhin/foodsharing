@@ -3,7 +3,7 @@
 from config import token, shelve_name, db_name 
 import storage_worker
 from db_worker import DBWorker
-from classes import User, Offer
+from classes import UserState, OfferInfo, State
 
 import telebot
 import requests
@@ -39,13 +39,12 @@ def test_message(message):
 @bot.message_handler(commands=['start'])
 def start_message(message):
     
-    cid = message.chat.id
     uid = message.from_user.id
 
-    # Сохранение пользователя в хранилище
-    db = DBWorker(db_name)
-    db.save_user(uid)
-
+    # Сохранение пользователя в БД
+    with DBWorker(db_name) as db:
+        db.insert_user(uid)
+        
     # Настройки клавиатуры
     keyboard_main = telebot.types.ReplyKeyboardMarkup()
     keyboard_main.row('Правила', 'Мои предложения','Поделиться', 'Забрать')
@@ -60,6 +59,30 @@ def start_message(message):
 def help_message(message):
     bot.send_message(message.chat.id, rules)
 
+# обработчик ввода названия предложения
+@bot.message_handler(func=lambda message: storage_worker.get_user(message.from_user.id).state == State.ENTER_NAME)
+def enter_offer_name(message):
+    
+    uid = message.from_user.id
+
+    offer_id = storage_worker.get_user(uid).cur_offer_id
+
+    with DBWorker(db_name) as db:
+        offer = db.select_offer(offer_id)
+
+    
+    
+# обработчик ввода описания предложения
+@bot.message_handler(func=lambda message: storage_worker.get_user(message.from_user.id).state == State.ENTER_DESCRIPTION)
+def enter_offer_description(message):
+
+    uid = message.from_user.id
+
+    offer_id = storage_worker.get_user(uid).cur_offer_id
+
+    
+
+
 
 # Обработчик всех сообщений
 @bot.message_handler(content_types=['text'])
@@ -68,9 +91,19 @@ def handle_text(message):
     uid = message.from_user.id
 
     if message.text == 'Поделиться':
-        bot.send_message(cid, 'Введите продукты')      
-        bot.register_next_step_handler_by_chat_id(cid, donor_input_products) 
 
+        user = storage_worker.get_user(uid)
+        user.state = State.ENTER_NAME
+
+        with DBWorker(db_name) as db:
+            user.cur_offer_id = db.insert_offer(uid)
+        
+        storage_worker.save_user(user)
+        
+        # bot.register_next_step_handler_by_chat_id(cid, donor_input_products) 
+        bot.send_message(cid, 'Введите название предложения')
+        
+        
     elif message.text == 'Забрать':
         markup_inline = telebot.types.InlineKeyboardMarkup()
         markup_inline.add(
@@ -109,6 +142,7 @@ def handle_text(message):
         # markup_inline.add(button_rules)     
     else:
         bot.send_message(message.chat.id, 'Я вас не понимаю :(')
+
 
 
 # Ввод продуктов
@@ -150,7 +184,7 @@ def donor_input_products(message):
             db[str(uid)].offers.append(offer)
         else:
         # Пользователь должен сохраняться на старте, это костыль для теста
-            db[str(uid)] = User(cid, uid)
+            db[str(uid)] = UserState(cid, uid)
         
     bot.send_message(message.chat.id, f'Принято! Ваше предложение сохранено под номером {offer.id}\n\
         Его можно дополнить данными', )
