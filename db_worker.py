@@ -42,9 +42,18 @@ class DBWorker:
             self.cursor.execute('INSERT INTO offers (id, user_id) VALUES (?, ?)', (offer_id, user_id))
             return offer_id
 
-    def update_offer(self, offer_id):
+    def update_offer_name(self, offer_id, name):
         with self.connection:
-            self.cursor.execute('UPDATE offers SET ...=? WHERE id=?', (data, offer_id))
+            self.cursor.execute('UPDATE offers SET name=? WHERE id=?', (name, offer_id))
+            
+    def update_offer_description(self, offer_id, description):
+        with self.connection:
+            self.cursor.execute('UPDATE offers SET description=? WHERE id=?', (description, offer_id))
+
+    def update_offer_coordinates(self, offer_id, coordinates: tuple):
+        (lat, long) = coordinates
+        with self.connection:
+            self.cursor.execute('UPDATE offers SET marker_latitude=? marker_longitude=? WHERE id=?', (lat, long, offer_id))
 
     def update_user_phone(self, user_id, phone):
         with self.connection:

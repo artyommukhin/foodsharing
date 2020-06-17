@@ -59,16 +59,7 @@ def start_message(message):
 def help_message(message):
     bot.send_message(message.chat.id, rules)
 
-# обработчик ввода названия предложения
-@bot.message_handler(func=lambda message: storage_worker.get_user(message.from_user.id).state == State.ENTER_NAME)
-def enter_offer_name(message):
-    
-    uid = message.from_user.id
 
-    offer_id = storage_worker.get_user(uid).cur_offer_id
-
-    with DBWorker(db_name) as db:
-        offer = db.select_offer(offer_id)
 
     
     
@@ -93,15 +84,19 @@ def handle_text(message):
     if message.text == 'Поделиться':
 
         user = storage_worker.get_user(uid)
-        user.state = State.ENTER_NAME
 
         with DBWorker(db_name) as db:
             user.cur_offer_id = db.insert_offer(uid)
         
         storage_worker.save_user(user)
         
+        keyboard = telebot.types.InlineKeyboardMarkup()
+        keyboard.add(
+            telebot.types.InlineKeyboardButton(text="Добавить название", callback_data="input_offer_name")
+        )
+
         # bot.register_next_step_handler_by_chat_id(cid, donor_input_products) 
-        bot.send_message(cid, 'Введите название предложения')
+        bot.send_message(cid, 'Введите название предложения', reply_markup=keyboard)
         
         
     elif message.text == 'Забрать':
@@ -119,12 +114,16 @@ def handle_text(message):
     elif message.text == 'Мои предложения':
         answer_str = 'Ваши предложения:\n'
         
-        with shelve.open(shelve_name, flag = 'c') as db:
-            if str(uid) in db:
-                for offer in db[str(uid)].offers:
-                    answer_str += f"ID: {offer['id']}\nName: {offer['name']}\nDate: {offer['time_to_pickup']}\n\n"
-            else:
-                answer_str = 'У вас нет предложений' 
+        with DBWorker(db_name) as db:
+            db.select_user_offers(uid)
+            
+
+        # with shelve.open(shelve_name, flag = 'c') as db:
+        #     if str(uid) in db:
+        #         for offer in db[str(uid)].offers:
+        #             answer_str += f"ID: {offer['id']}\nName: {offer['name']}\nDate: {offer['time_to_pickup']}\n\n"
+        #     else:
+        #         answer_str = 'У вас нет предложений' 
 
 
             # try:
@@ -202,8 +201,30 @@ def donor_input_products(message):
 
     # bot.register_next_step_handler_by_chat_id(message.chat.id, donor_input_photos)
 
-# def donor_input_photos(message):
-#     pass
+# обработчик нажатия кнопки изменения названия предложения
+@bot.callback_query_handler(func=lambda call: call.data == "input_offer_name")
+def callback_inline(call):
+
+    user = storage_worker.get_user(call.message.chat.id)
+    user.state = State.ENTER_NAME
+    storage_worker.save_user(user)
+
+    bot.send_message(call.message.chat.id, "Введите название предложения")    
+
+# обработчик ввода названия предложения
+@bot.message_handler(func=lambda message: storage_worker.get_user(message.from_user.id).state == State.ENTER_NAME)
+def enter_offer_name(message):
+    offer_name = message.text
+    if offer_name:
+        
+        uid = message.from_user.id
+        
+        offer_id = storage_worker.get_user(uid).cur_offer_id
+        
+        with DBWorker(db_name) as db:
+            db.update_offer_name(offer_id, offer_name)
+
+
 '''
 @bot.message_handler(content_types=['voice'])
 def handle_voice(message):
