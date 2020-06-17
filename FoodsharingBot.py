@@ -3,15 +3,15 @@ import requests
 import time
 from datetime import datetime
 
-TOKEN = "1095894840:AAE4ov_irt3t55axTBfBXgM0RehZ6wFKnxg"
+import config
+
+TOKEN = config.token
 bot = telebot.TeleBot(TOKEN)
 
 keyboard_main = telebot.types.ReplyKeyboardMarkup()
 keyboard_main.row('Поделиться', 'Забрать')
 
 keyboard_main.resize_keyboard = True
-
-#telebot.types.
 
 touch_count = 0
 
@@ -56,11 +56,5 @@ def handle_voice(message):
     bot.send_voice(message.chat.id, voice_file.content)
     bot.send_message(message.chat.id, message)
 
-while True:
-    try:
-        bot.polling(none_stop=True)
 
-    except Exception as e:
-        print('some problems')
-        time.sleep(5)
-#bot.infinity_polling()
+bot.infinity_polling()
