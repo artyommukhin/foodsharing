@@ -3,7 +3,7 @@
 from config import token, shelve_name, db_name 
 import storage_worker
 from db_worker import DBWorker
-from classes import UserState, OfferInfo, State
+from classes import * #UserState, OfferInfo, State
 
 import telebot
 import requests
@@ -44,7 +44,7 @@ def start_message(message):
     # Сохранение пользователя в БД
     with DBWorker(db_name) as db:
         db.insert_user(uid)
-        
+
     # Настройки клавиатуры
     keyboard_main = telebot.types.ReplyKeyboardMarkup()
     keyboard_main.row('Правила', 'Мои предложения','Поделиться', 'Забрать')
@@ -58,22 +58,34 @@ def start_message(message):
 @bot.message_handler(commands=['help'])
 def help_message(message):
     bot.send_message(message.chat.id, rules)
-
-
-
-    
-    
-# обработчик ввода описания предложения
-@bot.message_handler(func=lambda message: storage_worker.get_user(message.from_user.id).state == State.ENTER_DESCRIPTION)
-def enter_offer_description(message):
-
-    uid = message.from_user.id
-
-    offer_id = storage_worker.get_user(uid).cur_offer_id
-
     
 
 
+# обработчик нажатия кнопки изменения названия предложения
+@bot.callback_query_handler(func=lambda call: call.data == "input_offer_name")
+def callback_inline(call):
+
+    user = storage_worker.get_user(call.message.chat.id)
+    user.state = State.ENTER_NAME
+    user.last_info_msg_id = call.message.message_id
+    storage_worker.save_user(user)
+
+    bot.send_message(call.message.chat.id, "Введите название предложения")    
+
+# обработчик ввода названия предложения
+@bot.message_handler(func=lambda message: storage_worker.get_user(message.from_user.id).state == State.ENTER_NAME)
+def enter_offer_name(message):
+    offer_name = message.text
+    if offer_name:
+        
+        uid = message.from_user.id
+        user = storage_worker.get_user(uid)
+        
+        with DBWorker(db_name) as db:
+            db.update_offer_name(user.cur_offer_id, offer_name)
+        
+        user.state = State.START
+        storage_worker.save_user(user)
 
 # Обработчик всех сообщений
 @bot.message_handler(content_types=['text'])
@@ -84,19 +96,24 @@ def handle_text(message):
     if message.text == 'Поделиться':
 
         user = storage_worker.get_user(uid)
+ 
+        db = DBWorker(db_name)
+        offer_id = db.insert_offer(uid)
+        offer = db.select_offer(offer_id)
+        user.cur_offer_id = offer_id 
+        db.close()
 
-        with DBWorker(db_name) as db:
-            user.cur_offer_id = db.insert_offer(uid)
-        
         storage_worker.save_user(user)
-        
+
+        # with DBWorker(db_name) as db:
+        #     db.select_all_offers_of_user(uid)
+
         keyboard = telebot.types.InlineKeyboardMarkup()
         keyboard.add(
             telebot.types.InlineKeyboardButton(text="Добавить название", callback_data="input_offer_name")
         )
 
-        # bot.register_next_step_handler_by_chat_id(cid, donor_input_products) 
-        bot.send_message(cid, 'Введите название предложения', reply_markup=keyboard)
+        bot.send_message(cid, make_offer_info_string(offer), reply_markup=keyboard)
         
         
     elif message.text == 'Забрать':
@@ -116,142 +133,35 @@ def handle_text(message):
         
         with DBWorker(db_name) as db:
             db.select_user_offers(uid)
-            
-
-        # with shelve.open(shelve_name, flag = 'c') as db:
-        #     if str(uid) in db:
-        #         for offer in db[str(uid)].offers:
-        #             answer_str += f"ID: {offer['id']}\nName: {offer['name']}\nDate: {offer['time_to_pickup']}\n\n"
-        #     else:
-        #         answer_str = 'У вас нет предложений' 
-
-
-            # try:
-            #     if not db[str(uid)].offers:
-            #         raise KeyError
-            #     for offer in db[str(uid)].offers:
-            #         answer_str += f"ID: {offer['id']}\nName: {offer['name']}\nDate: {offer['time_to_pickup']}\n\n"
-            # except KeyError:
-            #     answer_str = 'У вас нет предложений'
                 
         bot.send_message(cid, answer_str)
-
-        # button_rules = telebot.types.InlineKeyboardButton('Правила', callback_data='test')
-        
-        # markup_inline.add(button_rules)     
+ 
     else:
         bot.send_message(message.chat.id, 'Я вас не понимаю :(')
 
 
 
-# Ввод продуктов
-# лажа тут
-def donor_input_products(message):
-    cid = message.chat.id
-    uid = message.from_user.id
-
-    # with shelve.open(shelve_name, flag='c') as db:
-    #     user_db = db[str(uid)]
-    #     for offer in user_db.offers:
-    #         if offer.status = "new":
 
 
-
-    # db = shelve.open(shelve_name, flag='c', writeback=True)
-    # user = db[str(uid)]
-    # db.close()
-
-    # offer = {
-    #     'id': random.getrandbits(16),
-    #     'name': message.text,
-    #     'desc': None, #'свежее',
-    #     'time_to_pickup': None, #str(datetime.now()),
-    #     'marker': None, #[1, 100], # lat, lon
-    #     'address': None #'Пушкина-колотушкина'
-    # }
-
-    offer = Offer( 
-        message.text,
-        None,
-        None,
-        None,        
-    )
-
-    with shelve.open(shelve_name, flag='c', writeback=True) as db:
-        # Так не должно быть
-        if str(uid) in db:
-            db[str(uid)].offers.append(offer)
-        else:
-        # Пользователь должен сохраняться на старте, это костыль для теста
-            db[str(uid)] = UserState(cid, uid)
         
-    bot.send_message(message.chat.id, f'Принято! Ваше предложение сохранено под номером {offer.id}\n\
-        Его можно дополнить данными', )
-    # markup_inline = telebot.types.InlineKeyboardMarkup()
+# обработчик ввода описания предложения
+# @bot.message_handler(func=lambda message: storage_worker.get_user(message.from_user.id).state == State.ENTER_DESCRIPTION)
+# def enter_offer_description(message):
 
-    # markup_inline.add(
-    #     telebot.types.InlineKeyboardButton('Добавить фото') #, callback_data=)
-    # )
+#     uid = message.from_user.id
 
-
-    #, reply_markup=markup_inline)
-    # except Exception:
-    #     print('problem')
-    #     bot.send_message(cid, 'Проюлема')
-
-    # bot.register_next_step_handler_by_chat_id(message.chat.id, donor_input_photos)
-
-# обработчик нажатия кнопки изменения названия предложения
-@bot.callback_query_handler(func=lambda call: call.data == "input_offer_name")
-def callback_inline(call):
-
-    user = storage_worker.get_user(call.message.chat.id)
-    user.state = State.ENTER_NAME
-    storage_worker.save_user(user)
-
-    bot.send_message(call.message.chat.id, "Введите название предложения")    
-
-# обработчик ввода названия предложения
-@bot.message_handler(func=lambda message: storage_worker.get_user(message.from_user.id).state == State.ENTER_NAME)
-def enter_offer_name(message):
-    offer_name = message.text
-    if offer_name:
-        
-        uid = message.from_user.id
-        
-        offer_id = storage_worker.get_user(uid).cur_offer_id
-        
-        with DBWorker(db_name) as db:
-            db.update_offer_name(offer_id, offer_name)
+#     offer_id = storage_worker.get_user(uid).cur_offer_id
 
 
-'''
-@bot.message_handler(content_types=['voice'])
-def handle_voice(message):
-    sender = message.from_user
-    print(f'voice message from {sender.first_name}({sender.username})')
-    file_info = bot.get_file(message.voice.file_id)
+############################ Служебные функции ############################ 
 
-    voice_file = requests.get(f'https://api.telegram.org/file/bot{TOKEN}/{file_info.file_path}')
-    
-    with open(f'saved_voices/voice{datetime.now().strftime("%d.%m.%Y-%H.%M.%S")}{sender.username}.ogg','wb') as file:
-        file.write(voice_file.content)    
+def make_offer_info_string(offer: Offer):
+    return f"Данные вашего предложения:\n{str(offer)}"
 
-    bot.send_voice(message.chat.id, voice_file.content)
-    bot.send_message(message.chat.id, message)
-'''    
-# bot.polling()
+
+
+
+
 
 if __name__ == '__main__':
     bot.infinity_polling()
-
-'''
-while True:
-    try:
-        bot.polling(none_stop=True)
-
-    except Exception as e:
-        print('some problems')
-        time.sleep(5)
-#bot.infinity_polling()
-'''

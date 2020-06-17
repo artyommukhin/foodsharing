@@ -17,9 +17,13 @@ class DBWorker:
         self.close()
 
 
-    def select_all_offers(self):
+    def select_all_offers_of_user(self, user_id):
         with self.connection:
-            return self.cursor.execute('SELECT * FROM offers').fetchall()
+            rows = self.cursor.execute('SELECT * FROM offers WHERE').fetchall()
+            offers = []
+            for row in rows:
+                offers.append(self._row_to_offer(row))
+            return offers
 
     def select_offer(self, offer_id):
         with self.connection:
@@ -68,5 +72,5 @@ class DBWorker:
     
     @staticmethod
     def _row_to_offer(row):
-        return Offer(row[0], row[1], )
+        return Offer(row[0], row[1], row[2], row[3], (row[4],row[5]))
 

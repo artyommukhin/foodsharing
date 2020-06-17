@@ -13,10 +13,11 @@ class State(Enum):
 
 class UserState:
     'Класс, хранящий информацию о состоянии пользователя'
-    def __init__(self, id, state=State.START, cur_offer_id=None):
+    def __init__(self, id, state=State.START, cur_offer_id=None, last_info_msg_id=None):
         self.id = id
         self.state = state
         self.cur_offer_id = cur_offer_id
+        self.last_info_msg_id = last_info_msg_id
  
 class User:
     'Класс для представления информации о пользователе из БД'
@@ -27,31 +28,14 @@ class User:
 
 class Offer:
     'Класс для представления информации о предложении из БД'
-    def __init__(self, id, user_id, name: str, descr, pickup_date, coords: tuple):
+    def __init__(self, id, user_id, name: str, description, coordinates: tuple):
         self.id = id
         self.user_id = user_id
         self.name = name
-        self.pickup_date = pickup_date
-        self.coords = coords
-
-        self.id = random.getrandbits(16)
-
+        self.description = description
+        # self.pickup_date = pickup_date
+        self.coordinates = coordinates
         
-    
-    # def __str__(self):
-    #     return {
-    #     'id': self.id,
-    #     'name': 'Мясо',
-    #     'desc': 'свежее',
-    #     'time_to_pickup': str(datetime.now()),
-    #     'marker': [1, 100], # lat, lon
-    #     'address': 'Пушкина-колотушкина'
-    # }
-    
-# Нужно подумать...
-# class UserStorageInfo:
-
-#      def __init__(self, offer_id, state):
-#         #  self.user_id = user_id
-#          self.offer_id = offer_id
-#          self.state = state
+    def __str__(self):
+        return f"id: {self.id}\nname: {self.name}\ndescription: {self.description}\ncoordinates: {self.coordinates}"
+        

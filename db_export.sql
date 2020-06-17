@@ -3,7 +3,7 @@ DROP TABLE IF EXISTS "offers";
 CREATE TABLE IF NOT EXISTS "offers" (
 	"id"	INTEGER NOT NULL UNIQUE,
 	"user_id"	INTEGER,
-	"name"	TEXT NOT NULL,
+	"name"	TEXT,
 	"description"	TEXT,
 	"marker_latitude"	REAL,
 	"marker_longitude"	REAL,
