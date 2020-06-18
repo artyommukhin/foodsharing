@@ -1,8 +1,10 @@
+from classes import User, Offer
+
 import sqlite3
 import sys
 import random
 
-from classes import User, Offer
+
 
 class DBWorker:
 
@@ -19,7 +21,7 @@ class DBWorker:
 
     def select_all_offers_of_user(self, user_id):
         with self.connection:
-            rows = self.cursor.execute('SELECT * FROM offers WHERE').fetchall()
+            rows = self.cursor.execute('SELECT * FROM offers WHERE user_id=?',(user_id,)).fetchall()
             offers = []
             for row in rows:
                 offers.append(self._row_to_offer(row))
@@ -55,9 +57,10 @@ class DBWorker:
             self.cursor.execute('UPDATE offers SET description=? WHERE id=?', (description, offer_id))
 
     def update_offer_coordinates(self, offer_id, coordinates: tuple):
+        "coordinates (lat, long)"
         (lat, long) = coordinates
         with self.connection:
-            self.cursor.execute('UPDATE offers SET marker_latitude=? marker_longitude=? WHERE id=?', (lat, long, offer_id))
+            self.cursor.execute('UPDATE offers SET marker_latitude=?, marker_longitude=? WHERE id=?', (lat, long, offer_id))
 
     def update_user_phone(self, user_id, phone):
         with self.connection:
