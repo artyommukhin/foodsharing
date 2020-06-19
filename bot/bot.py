@@ -3,7 +3,7 @@
 from config import token, shelve_name, db_name 
 import storage_worker
 from db_worker import DBWorker
-from classes import  State, UserState, User, Offer
+from model import  State, UserState, User, Offer
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton

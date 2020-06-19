@@ -1,4 +1,4 @@
-from classes import User, Offer
+from model import User, Offer
 
 import sqlite3
 import sys

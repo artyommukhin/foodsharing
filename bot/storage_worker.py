@@ -1,5 +1,5 @@
 from config import shelve_name
-from classes import State, UserState
+from model import State, UserState
 
 import shelve
 
