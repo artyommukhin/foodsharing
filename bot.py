@@ -6,6 +6,7 @@ from db_worker import DBWorker
 from classes import  State, UserState, User, Offer
 
 import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
 
 rules = '''\
@@ -68,7 +69,7 @@ def callback_inline(call):
         user.last_info_msg_id = call.message.message_id
         storage_worker.save_user_state(user)
 
-        bot.send_message(call.message.chat.id, "Введите название предложения")    
+        bot.send_message(call.message.chat.id, "Введите название предложения" )    
     
     # обработчик нажатия кнопки изменения названия предложения
     elif call.data == "input_offer_description":
@@ -88,12 +89,7 @@ def callback_inline(call):
         user.last_info_msg_id = call.message.message_id
         storage_worker.save_user_state(user)
 
-        keyboard = telebot.types.ReplyKeyboardMarkup()
-        keyboard.add(
-            telebot.types.KeyboardButton("Отправить местоположение", request_location=True)
-        )
-
-        bot.send_message(call.message.chat.id, "Отправьте координаты места, где будет размещено ваше предложение", reply_markup=keyboard) 
+        bot.send_message(call.message.chat.id, "Отправьте координаты места, где будет размещено ваше предложение") 
      
 
     # обработчик нажатия кнопки "Назад" после ввода названия предложения
@@ -105,6 +101,21 @@ def callback_inline(call):
         storage_worker.save_user_state(user)
 
         send_offer_info_message(call.message.chat.id, offer_id) 
+
+    elif call.data.startswith("show_offer"):
+
+        offer_id = int(call.data[11:])
+        send_offer_info_message(call.message.chat.id, offer_id)
+
+    elif call.data == "create_new_offer":
+
+        user = storage_worker.get_user_state(call.message.chat.id)
+        
+        with DBWorker(db_name) as db:
+            user.cur_offer_id = db.insert_offer(user.id)
+
+        
+        
 
 
 
@@ -221,11 +232,18 @@ def handle_text(message):
         with DBWorker(db_name) as db:
             offers = db.select_all_offers_of_user(uid)
 
-        keyboard = telebot.types.InlineKeyboardMarkup()
-        for offer in offers:
-            keyboard.add(telebot.types.InlineKeyboardButton(f"{offer.id}, {offer.name}", callback_data=f"show_offer:{offer.id}"))
+        if offers:
+            keyboard = telebot.types.InlineKeyboardMarkup()
+            for offer in offers:
+                keyboard.add(telebot.types.InlineKeyboardButton(f"{offer.id}, {offer.name}", callback_data=f"show_offer:{offer.id}"))
 
-        bot.send_message(cid, "Ваши предложения:", reply_markup=keyboard)
+            bot.send_message(cid, "Ваши предложения:", reply_markup=keyboard)
+        else:
+            keyboard = telebot.types.InlineKeyboardMarkup()
+            keyboard.add(
+                telebot.types.InlineKeyboardButton("Создать новое предложение", callback_data='create_new_offer')
+            )
+            bot.send_message(cid, 'У вас пока нет предложений', reply_markup=keyboard)
  
     else:
         bot.send_message(message.chat.id, 'Я вас не понимаю :(')
@@ -255,6 +273,15 @@ def send_offer_info_message(chat_id, offer_id):
         chat_id, 
         make_offer_info_string(offer_id),
         reply_markup=make_offer_info_keyboard()
+    )
+
+def send_message_with_back_button(chat_id, text):
+    pass
+
+def make_back_button_keyboard():
+    keyboard = ReplyKeyboardMarkup()
+    keyboard.add(
+        KeyboardButton("Отмена")
     )
 
 def show_offer_from_callback(callback_data):
