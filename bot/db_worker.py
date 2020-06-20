@@ -66,14 +66,21 @@ class DBWorker:
         with self.connection:
             self.cursor.execute('UPDATE users SET phone=? WHERE id=?', (phone, user_id))
 
+    def delete_offer(self, offer_id):
+        with self.connection:
+            self.cursor.execute('DELETE FROM offers WhERE id=?', (offer_id,))
+    
+
     def close(self):
         self.connection.close()
 
     @staticmethod
     def _row_to_user(row):
-        return User(row[0], row[1], row[2])
+        if row:
+            return User(row[0], row[1], row[2])
     
     @staticmethod
     def _row_to_offer(row):
-        return Offer(row[0], row[1], row[2], row[3], (row[4],row[5]))
+        if row:
+            return Offer(row[0], row[1], row[2], row[3], (row[4],row[5]))
 
