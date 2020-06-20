@@ -37,5 +37,5 @@ class Offer:
         self.coordinates = coordinates
         
     def __str__(self):
-        return f"Идентификатор: {self.id}\nНазвание: {self.name}\nОписание: {self.description}\nКоординаты маркера: {self.coordinates}"
+        return f"ID: {self.id}\nНазвание: {self.name}\nОписание: {self.description}\nКоординаты маркера: {self.coordinates}"
         
