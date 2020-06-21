@@ -7,6 +7,7 @@ from model import  State, UserState, User, Offer
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+import sys
 
 
 rules = '''\
@@ -20,25 +21,25 @@ rules = '''\
 # Инициализация объекта бота
 bot = telebot.TeleBot(token)
 
+@bot.message_handler(commands=['test'])
+def test(message):
+    bot.send_message(message.chat.id, "[Настя](tg://user?id=379247899)", parse_mode="Markdown")
+
 # Обработчик стартовой команды
 @bot.message_handler(commands=['start'])
 def start_message(message):
     
     uid = message.from_user.id
+    username = message.from_user.username
 
     # Сохранение пользователя в БД
     with DBWorker(db_name) as db:
         db.insert_user(uid)
+        if username:
+            db.update_user_name(uid, username)
 
     # Сохранение пользователя в хранилище
     storage_worker.save_user_state(UserState(uid))
-
-    # Настройки клавиатуры
-    keyboard_main = telebot.types.ReplyKeyboardMarkup()
-    keyboard_main.row('Правила')
-    keyboard_main.row('Мои предложения','Поделиться')
-    keyboard_main.row('Забрать')
-    # keyboard_main.resize_keyboard = True
 
     reply = ('Привет! Добро пожаловать в мир рационального использования ресурсов!\n'
             'Выберите действие\n'
@@ -46,7 +47,7 @@ def start_message(message):
     )
     
     # Отправка сообщения с клавиатурой
-    bot.send_message(message.chat.id, reply, reply_markup=keyboard_main)
+    bot.send_message(message.chat.id, reply, reply_markup=make_main_keyboard())
 
 
 # Обработчик вызова помощи
@@ -69,7 +70,7 @@ def callback_inline(call):
         user.last_info_msg_id = call.message.message_id
         storage_worker.save_user_state(user)
 
-        bot.send_message(chat_id, "Введите название предложения" )    
+        bot.send_message(chat_id, "Введите название предложения", reply_markup=make_cancel_button_keyboard())    
     
     # обработчик нажатия кнопки изменения названия предложения
     elif call.data == "input_offer_description":
@@ -79,18 +80,36 @@ def callback_inline(call):
         user.last_info_msg_id = call.message.message_id
         storage_worker.save_user_state(user)
 
-        bot.send_message(chat_id, "Введите описание предложения")   
-
+        bot.send_message(chat_id, "Введите описание предложения", reply_markup=make_cancel_button_keyboard())   
+        
     # обработчик нажатия кнопки изменения координат маркера предложения
     elif call.data == "input_offer_coordinates":
 
         user = storage_worker.get_user_state(chat_id)
+        
+        if not is_offer_ready(user.cur_offer_id):
+            bot.send_message(chat_id, "Невозможно разместить предложение на карте\nНедостаточно информации о предложении") 
+            return
+
+        with DBWorker(db_name) as db:
+            username = db.select_user_name(user_id)
+            phone = db.select_user_phone(user_id)
+            if not (username or phone):
+                user.state = State.ENTER_CONTACT
+                storage_worker.save_user_state(user)
+                keyboard = ReplyKeyboardMarkup()
+                keyboard.add(KeyboardButton('Отправить телефон',request_contact=True))
+                keyboard.resize_keyboard = True
+                bot.send_message(chat_id, 'Для связи с вами необходим телефон', reply_markup=keyboard)
+                return               
+        
         user.state = State.ENTER_COORDINATES
         user.last_info_msg_id = call.message.message_id
         storage_worker.save_user_state(user)
+   
+        bot.send_message(chat_id, "Отправьте координаты места, где будет размещено ваше предложение\n(Координаты можно отправить, нажав на скрепочку и выбрав местоположение)",
+            reply_markup=make_cancel_button_keyboard()) 
 
-        bot.send_message(chat_id, "Отправьте координаты места, где будет размещено ваше предложение\n(Координаты можно отправить, нажав на скрепочку)") 
-     
 
     # обработчик нажатия кнопки "Назад" после ввода данных предложения
     elif call.data == "back_to_offer":
@@ -108,23 +127,27 @@ def callback_inline(call):
         offer_id = int(call.data[11:])
         
         user = storage_worker.get_user_state(user_id)
-        
         user.cur_offer_id = offer_id
 
-        message_id = user.last_info_msg_id
-        user.last_info_msg_id = None
-        
-        storage_worker.save_user_state(user)
-
         # удаление старого информационного сообщения
+        message_id = user.last_info_msg_id
         if message_id:
             bot.delete_message(chat_id, message_id)
 
-        send_offer_info_message(chat_id, offer_id)
+        # отправка нового информационного сообщения
+        reply = send_offer_info_message(chat_id, offer_id)
+
+        # сохранение нового информационного сообщения
+        user.last_info_msg_id = reply.message_id
+        storage_worker.save_user_state(user)
 
     elif call.data == "create_new_offer":
 
         offer_id = create_new_offer(chat_id)
+
+        user = storage_worker.get_user_state(user_id)
+        user.cur_offer_id = offer_id
+        storage_worker.save_user_state(user)
 
         send_offer_info_message(chat_id, offer_id)
 
@@ -142,21 +165,20 @@ def callback_inline(call):
         bot.send_message(chat_id, f"Предложение №{offer_id}  успешно удалено")
 
 
-        
-        
+# обработчик ввода данных предложения
+@bot.message_handler(func=lambda message: storage_worker.get_user_state(message.from_user.id).state != State.START, content_types=['text','location','contact'])
+def enter_offer_data(message):
 
-
-
-    
-
-# обработчик ввода названия предложения
-@bot.message_handler(func=lambda message: storage_worker.get_user_state(message.from_user.id).state != State.START, content_types=['text','location'])
-def enter_offer_name(message):
-     
     user_id = chat_id = message.chat.id
     user = storage_worker.get_user_state(user_id)
     
-    if user.state == State.ENTER_NAME and message.text:
+    if message.text == 'Отмена':
+        user.state = State.START
+        storage_worker.save_user_state(user)
+        bot.send_message(chat_id, 'Ввод отменён', reply_markup=make_main_keyboard())
+        return
+
+    elif user.state == State.ENTER_NAME and message.text:
         offer_name = message.text
         with DBWorker(db_name) as db:
             db.update_offer_name(user.cur_offer_id, offer_name)
@@ -167,46 +189,65 @@ def enter_offer_name(message):
             db.update_offer_description(user.cur_offer_id, offer_description)
     
     elif user.state == State.ENTER_COORDINATES and message.location:
+        
         offer_coordinates = message.location
         with DBWorker(db_name) as db:
             db.update_offer_coordinates(user.cur_offer_id, (offer_coordinates.latitude, offer_coordinates.longitude))
+            
+   
+    elif user.state == State.ENTER_CONTACT and message.contact:
+        
+        user_phone = message.contact.phone_number
+        with DBWorker(db_name) as db:
+            db.update_user_phone(user_id, user_phone)
+        user.state = State.ENTER_COORDINATES
+        storage_worker.save_user_state(user)
+
+        bot.send_message(chat_id, "Отправьте координаты места, где будет размещено ваше предложение\n(Координаты можно отправить, нажав на скрепочку и выбрав местоположение)",
+            reply_markup=make_cancel_button_keyboard()) 
+
     else:
+
         bot.send_message(chat_id, 'Введите корректные данные')
         return
+    
     user.state = State.START
     storage_worker.save_user_state(user)
 
     # Обновление информации в последнем информационном сообщении
     refresh_offer_info_message(message.chat.id, user.cur_offer_id, user.last_info_msg_id)
 
-    keyboard = telebot.types.InlineKeyboardMarkup()
+    keyboard = InlineKeyboardMarkup()
     keyboard.add(
-        telebot.types.InlineKeyboardButton("Вернуться к предложению", callback_data="back_to_offer")
+        InlineKeyboardButton("Вернуться к предложению", callback_data="back_to_offer")
     )
     bot.send_message(message.chat.id, "Принято!", reply_markup=keyboard)
 
 
-# Обработчик всех сообщений
+# Обработчик всех остальных сообщений
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
 
     user_id = chat_id = message.chat.id
 
     if message.text == 'Поделиться':
-
+        
         offer_id = create_new_offer(user_id)
+
+        user = storage_worker.get_user_state(user_id)
+        user.cur_offer_id = offer_id
+        storage_worker.save_user_state(user)
 
         send_offer_info_message(chat_id, offer_id)
         
         
     elif message.text == 'Забрать':
-        markup_inline = telebot.types.InlineKeyboardMarkup()
+
+        markup_inline = InlineKeyboardMarkup()
         markup_inline.add(
-            telebot.types.InlineKeyboardButton('Карта доноров (1)' ,  url = 'http://192.168.0.4/fsmap'), 
-                # url='https://2gis.ru/krasnoyarsk/firm/986145966616730?m=92.797081%2C55.994433%2F16')
-            telebot.types.InlineKeyboardButton('Карта доноров (2)' ,  url = 'http://192.168.0.3/fsmap') 
+            InlineKeyboardButton('Открыть карту' ,  url = 'http://192.168.0.4') 
         )     
-        bot.send_message(chat_id, 'Карта:', reply_markup=markup_inline)
+        bot.send_message(chat_id, 'Ссылка на карту:', reply_markup=markup_inline)
 
     elif message.text == 'Правила':
         bot.send_message(message.chat.id, rules)
@@ -234,10 +275,13 @@ def handle_text(message):
         bot.send_message(message.chat.id, 'Я вас не понимаю :(')
 
 
-
-
-
 ############################ Служебные функции ############################ 
+def make_main_keyboard():
+    keyboard_main = ReplyKeyboardMarkup()
+    keyboard_main.row('Правила')
+    keyboard_main.row('Мои предложения','Поделиться')
+    keyboard_main.row('Забрать')
+    return keyboard_main
 
 def make_offer_info_string(offer_id):
     with DBWorker(db_name) as db:
@@ -257,44 +301,49 @@ def make_offer_info_keyboard(offer_id):
     return keyboard
 
 def send_offer_info_message(chat_id, offer_id):
-    bot.send_message(
+    reply = bot.send_message(
         chat_id, 
         make_offer_info_string(offer_id),
         reply_markup=make_offer_info_keyboard(offer_id)
     )
+    return reply
 
 def refresh_offer_info_message(chat_id, offer_id, message_id):
-    bot.edit_message_text(
-        make_offer_info_string(offer_id),
-        chat_id,
-        message_id,
-        reply_markup=make_offer_info_keyboard(offer_id)
-    )
+    try:
+        bot.edit_message_text(
+            make_offer_info_string(offer_id),
+            chat_id,
+            message_id,
+            reply_markup=make_offer_info_keyboard(offer_id)
+        )
+    except telebot.apihelper.ApiException:
+        print(sys.exc_info()[1]) 
 
-def make_back_button_markup():
+def make_back_button_keyboard():
     keyboard = InlineKeyboardMarkup()
     keyboard.add(
         InlineKeyboardButton("Назад", callback_data="back")
     )
 
-def make_back_button_keyboard():
+def make_cancel_button_keyboard():
     keyboard = ReplyKeyboardMarkup()
-    keyboard.add(
-        KeyboardButton("Отмена")
-    )
+    keyboard.row("Отмена")    
+    keyboard.resize_keyboard = True
+    return keyboard
 
 def show_offer_from_callback(callback_data):
     pass
 
 def create_new_offer(user_id):
 
-    user = storage_worker.get_user_state(user_id)
-    # Создание нового предложения
-    with DBWorker(db_name) as db:
-        user.cur_offer_id = db.insert_offer(user_id)
-    storage_worker.save_user_state(user)
+    with DBWorker(db_name) as db: 
+        offer_id = db.insert_offer(user_id)
 
-    return user.cur_offer_id
+    return offer_id 
+
+def is_offer_ready(offer_id):
+    with DBWorker(db_name) as db:
+        return db.select_offer_is_ready(offer_id)
 
 if __name__ == '__main__':
     bot.infinity_polling()
