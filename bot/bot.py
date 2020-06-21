@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 from config import token, shelve_name, db_name 
 import storage_worker
 from db_worker import DBWorker
@@ -122,6 +121,7 @@ def callback_inline(call):
 
         send_offer_info_message(chat_id, offer_id)
 
+    # обработчик нажатия на предложение из списка
     elif call.data == "create_new_offer":
 
         offer_id = create_new_offer(chat_id)
@@ -140,18 +140,11 @@ def callback_inline(call):
             db.delete_offer(offer_id)
         
         bot.send_message(chat_id, f"Предложение №{offer_id}  успешно удалено")
-
-
-        
-        
-
-
-
     
 
-# обработчик ввода названия предложения
+# обработчик ввода информации о предложении
 @bot.message_handler(func=lambda message: storage_worker.get_user_state(message.from_user.id).state != State.START, content_types=['text','location'])
-def enter_offer_name(message):
+def enter_offer_info(message):
      
     user_id = chat_id = message.chat.id
     user = storage_worker.get_user_state(user_id)
@@ -186,7 +179,7 @@ def enter_offer_name(message):
     bot.send_message(message.chat.id, "Принято!", reply_markup=keyboard)
 
 
-# Обработчик всех сообщений
+# Обработчик всех текстовых сообщений
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
 
@@ -234,9 +227,6 @@ def handle_text(message):
         bot.send_message(message.chat.id, 'Я вас не понимаю :(')
 
 
-
-
-
 ############################ Служебные функции ############################ 
 
 def make_offer_info_string(offer_id):
@@ -282,9 +272,6 @@ def make_back_button_keyboard():
     keyboard.add(
         KeyboardButton("Отмена")
     )
-
-def show_offer_from_callback(callback_data):
-    pass
 
 def create_new_offer(user_id):
 
