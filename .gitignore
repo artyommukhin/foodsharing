@@ -137,3 +137,6 @@ database.db
 
 # VSCode settings
 .vscode
+
+# web server
+nginx/

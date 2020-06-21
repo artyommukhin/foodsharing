@@ -8,7 +8,7 @@ class State(Enum):
     ENTER_NAME = 1
     ENTER_DESCRIPTION = 2
     ENTER_COORDINATES = 3
-    ENTER_PICKUP_DATE = 4
+    ENTER_CONTACT = 4
     
 
 class UserState:

@@ -31,9 +31,24 @@ class DBWorker:
         with self.connection:
             return self._row_to_offer(self.cursor.execute('SELECT * FROM offers WHERE id=?', (offer_id,)).fetchone())    
 
-    def select_user_offers(self, user_id):
+    def select_user_name(self, user_id):
         with self.connection:
-            return self.cursor.execute('SELECT * FROM offers WHERE user_id=?', (user_id,)).fetchall()
+            username = self.cursor.execute('SELECT name FROM users WHERE id=?', (user_id,)).fetchone()
+            if username == (None,):
+                return None
+            return username
+
+    def select_user_phone(self, user_id):
+        with self.connection:
+            phone = self.cursor.execute('SELECT phone FROM users WHERE id=?', (user_id,)).fetchone()
+            if phone == (None,):
+                return None
+            return phone
+
+
+    def select_offer_is_ready(self, offer_id):
+        with self.connection:
+            return bool(self.cursor.execute('SELECT is_ready FROM offers WHERE id=?', (offer_id,)).fetchone())
 
     def insert_user(self, user_id):
         try:
@@ -41,6 +56,10 @@ class DBWorker:
                 self.cursor.execute('INSERT INTO users (id) VALUES (?)', (user_id,))
         except sqlite3.IntegrityError:
             print(sys.exc_info()[1])
+
+    def update_user_name(self, user_id, name):
+        with self.connection:
+            self.cursor.execute('UPDATE users SET name=? WHERE id=?', (name, user_id))
 
     def insert_offer(self, user_id):
         offer_id = random.getrandbits(16)

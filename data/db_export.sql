@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS "offers" (
 	"marker_latitude"	REAL,
 	"marker_longitude"	REAL,
 	"is_complete"	INTEGER NOT NULL DEFAULT 0,
+	"is_ready"	INTEGER DEFAULT 0,
 	PRIMARY KEY("id"),
 	FOREIGN KEY("user_id") REFERENCES "users"("id")
 );
@@ -18,6 +19,16 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"phone"	TEXT,
 	PRIMARY KEY("id")
 );
+DROP TRIGGER IF EXISTS "check_offer_ready";
+CREATE TRIGGER check_offer_ready
+   AFTER UPDATE 
+   ON offers
+BEGIN
+	UPDATE offers
+	SET is_ready = 1
+	WHERE name NOTNULL
+	AND description NOTNULL;
+END;
 DROP TRIGGER IF EXISTS "check_offer_complete";
 CREATE TRIGGER check_offer_complete
    AFTER UPDATE 
