@@ -205,7 +205,7 @@ def enter_offer_info(message):
 
         bot.send_message(chat_id, "Отправьте координаты места, где будет размещено ваше предложение\n(Координаты можно отправить, нажав на скрепочку и выбрав местоположение)",
             reply_markup=make_cancel_button_keyboard()) 
-
+        return
     else:
 
         bot.send_message(chat_id, 'Введите корректные данные')

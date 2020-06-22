@@ -4,8 +4,6 @@ import sqlite3
 import sys
 import random
 
-
-
 class DBWorker:
 
     def __init__(self, database):
@@ -18,19 +16,10 @@ class DBWorker:
     def __exit__(self, exit, value, exc):   
         self.close()
 
+    def close(self):
+        self.connection.close()
 
-    def select_all_offers_of_user(self, user_id):
-        with self.connection:
-            rows = self.cursor.execute('SELECT * FROM offers WHERE user_id=?',(user_id,)).fetchall()
-            offers = []
-            for row in rows:
-                offers.append(self._row_to_offer(row))
-            return offers
-
-    def select_offer(self, offer_id):
-        with self.connection:
-            return self._row_to_offer(self.cursor.execute('SELECT * FROM offers WHERE id=?', (offer_id,)).fetchone())    
-
+    ############################## users ##############################
     def select_user_name(self, user_id):
         with self.connection:
             username = self.cursor.execute('SELECT name FROM users WHERE id=?', (user_id,)).fetchone()
@@ -44,7 +33,6 @@ class DBWorker:
             if phone == (None,):
                 return None
             return phone
-
 
     def select_offer_is_ready(self, offer_id):
         with self.connection:
@@ -60,6 +48,23 @@ class DBWorker:
     def update_user_name(self, user_id, name):
         with self.connection:
             self.cursor.execute('UPDATE users SET name=? WHERE id=?', (name, user_id))
+
+    def update_user_phone(self, user_id, phone):
+        with self.connection:
+            self.cursor.execute('UPDATE users SET phone=? WHERE id=?', (phone, user_id))
+
+    ############################## offers ##############################
+    def select_all_offers_of_user(self, user_id):
+        with self.connection:
+            rows = self.cursor.execute('SELECT * FROM offers WHERE user_id=?',(user_id,)).fetchall()
+            offers = []
+            for row in rows:
+                offers.append(self._row_to_offer(row))
+            return offers
+
+    def select_offer(self, offer_id):
+        with self.connection:
+            return self._row_to_offer(self.cursor.execute('SELECT * FROM offers WHERE id=?', (offer_id,)).fetchone())  
 
     def insert_offer(self, user_id):
         offer_id = random.getrandbits(16)
@@ -81,17 +86,10 @@ class DBWorker:
         with self.connection:
             self.cursor.execute('UPDATE offers SET marker_latitude=?, marker_longitude=? WHERE id=?', (lat, long, offer_id))
 
-    def update_user_phone(self, user_id, phone):
-        with self.connection:
-            self.cursor.execute('UPDATE users SET phone=? WHERE id=?', (phone, user_id))
-
     def delete_offer(self, offer_id):
         with self.connection:
             self.cursor.execute('DELETE FROM offers WhERE id=?', (offer_id,))
-    
 
-    def close(self):
-        self.connection.close()
 
     @staticmethod
     def _row_to_user(row):
@@ -102,4 +100,3 @@ class DBWorker:
     def _row_to_offer(row):
         if row:
             return Offer(row[0], row[1], row[2], row[3], (row[4],row[5]))
-
