@@ -127,3 +127,16 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# config file
+config.py
+
+# storage and DB files
+storage.*
+database.db
+
+# VSCode settings
+.vscode
+
+# web server
+nginx/
